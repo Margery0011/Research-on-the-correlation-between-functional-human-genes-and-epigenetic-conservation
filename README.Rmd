@@ -1,10 +1,10 @@
 ---
 title: "README"
 author: "yutian"
-date: "r Sys.time"
-output: html_document
+date: "`r Sys.Date()`"
+output: github_document
+always_allow_html: true
 ---
-
 
 # Research on the correlation between functional human genes and epigenetic conservation
 
@@ -12,17 +12,114 @@ output: html_document
 
 Name: Dr. Kimberly Siegmund
 
-Email: kims@usc.edu
- 
+Email: [kims\@usc.edu](mailto:kims@usc.edu){.email}
+
 ## Introduction
 
 This project is based on the paper called ["Functional human genes typically exhibit epigenetic conservation"](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8439480/), where they have found that DepMap critical genes exhibit cell-specific preferential epigenetic conservation by comparing DNA methylation measurements across intestinal crypts from the same person as well as between duplicate cell lines.Therefore, they raised the hypothesis that essential genes are more conserved because if there is a deviation, it is not an important area of the genome since the body does not have to protect it.
 
 ## Things have done
 
-- Recauculated the relationship between Colon epithelial average gene expression (log2 CPM) and variability (variance) with gene conservation (PWD)
-- Reproduced and optimize drawn figure for a better visualization of the relationship
+-   Recauculated the relationship between Colon epithelial average gene expression (log2 CPM) and variability (variance) with gene conservation (PWD)
+-   Reproduced and optimize drawn figure for a better visualization of the relationship
+
+```{r install libraries, message=FALSE,results = 'hide',include=FALSE}
+list.of.packages <- c("readxl", "dplyr","ggpubr","ggstatsplot","cowplot","devtools")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+```
+
+```{r load libraries,message=FALSE,include=FALSE}
+library(readxl)
+library(dplyr)
+library(cowplot)
+library(ggplot2)
+library(ggpubr)
+library(devtools)
+```
+
+```{r,include=FALSE}
+nmx <- readxl::read_xlsx("Normal_colon.xlsx")
+essential_depmap<-nmx %>%
+  filter(nmx$`common essential DepMap`!="#N/A")
+Not_essential_depmap<-nmx[1220:19525,]
+Nona_essential_depmap <- dplyr::filter(essential_depmap, !is.na(`ave NN3`))
+Nona_NotDepMap <- dplyr::filter(Not_essential_depmap, !is.na(`ave NN3`))
+Nona_NN <- dplyr::filter(nmx, !is.na(`ave NN3`))
+```
+
+```{r, include=FALSE}
+colnames(Nona_NN)[2] <-"Log2_CPM"
+colnames(Nona_NN)[3] <-"Log2_CPM_variance"
+colnames(Nona_NN)[4] <-"NN3_genePWD"
+colnames(Nona_essential_depmap)[2] <-"Log2_CPM"
+colnames(Nona_essential_depmap)[3] <-"Log2_CPM_variance"
+colnames(Nona_essential_depmap)[4] <-"NN3_genePWD"
+colnames(Nona_essential_depmap)[2] <-"Log2_CPM"
+colnames(Nona_essential_depmap)[3] <-"Log2_CPM_variance"
+colnames(Nona_essential_depmap)[4] <-"NN3_genePWD"
+```
+
+```{r, include=FALSE}
+Nona_NN$`common essential DepMap`[!is.na(Nona_NN$`common essential DepMap`)] <- "DepMap_Essential"
+Nona_NN$`common essential DepMap`[is.na(Nona_NN$`common essential DepMap`)] <- "Not_DepMap_Essential"
+```
+
+### DepMap Essential Genes
+
+```{r}
+cor(Nona_essential_depmap$NN3_genePWD, Nona_essential_depmap$Log2_CPM, method = c("pearson", "kendall", "spearman"))
+cor.test(Nona_essential_depmap$NN3_genePWD, Nona_essential_depmap$Log2_CPM, method=c("pearson", "kendall", "spearman"))
+```
+
+If the correlation coefficient is greater than zero, it is a positive relationship. Conversely, if the value is less than zero, it is a negative relationship. A value of zero indicates that there is no relationship between the two variables.
+
+```{r}
+cor.test(Nona_essential_depmap$NN3_genePWD, Nona_essential_depmap$Log2_CPM, alternative = "less")
+```
+
+```{r, echo=FALSE}
+smoothScatter(Nona_essential_depmap$NN3_genePWD~ Nona_essential_depmap$Log2_CPM,main = "Essential_depmap_normal_colon",ylab = "gene conservation(PWD)",xlab = "Log2_CPM")
+abline(lm(Nona_essential_depmap$NN3_genePWD~ Nona_essential_depmap$Log2_CPM), col="red2", lty=1, lwd=3)
+```
+
+```{r, echo=FALSE}
+smoothScatter(Nona_essential_depmap$Log2_CPM~ Nona_essential_depmap$NN3_genePWD,main = "Essential_depmap_normal_colon",xlab = "gene conservation(PWD)",ylab = "Log2_CPM")
+```
+
+```{r, echo=FALSE}
+# Bin size control + color palette
+ggplot(Nona_essential_depmap, aes(x=NN3_genePWD, y=Log2_CPM) ) + xlab ("gene conservation(PWD)")+ylab( "Log2_CPM")+geom_bin2d() +
+  scale_fill_continuous(type = "viridis") +
+  theme_bw()
+```
+
+```{r, echo=FALSE}
+ggplot(Nona_essential_depmap,aes(x=NN3_genePWD,y=Log2_CPM)) + geom_point(alpha = 0.3) + geom_smooth(color="red",method ='loess',formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 8,size=3)+ggtitle("DepMap Essential Genes: Log2CPM_vs_PWD")
+```
+
+```{r, echo=FALSE}
+ggplot(Nona_essential_depmap,aes(y=NN3_genePWD,x=Log2_CPM)) + geom_point(alpha = 0.3) + geom_smooth(method = "lm",color="red",formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 0.3,size=3)+ggtitle("DepMap Essential Genes: PWD_vs_Log2CPM")
+```
+
+```{r, echo=FALSE}
+ggplot(Nona_essential_depmap,aes(y=aveAd3,x=Log2_CPM)) + geom_point(alpha = 0.3) + geom_smooth(method = "lm",color="red",formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 0.3,size=3)+ggtitle("DepMap Essential Genes: PWD_vs_Log2CPM")
+```
+
+```{r, echo=FALSE}
+ggplot(Nona_essential_depmap,aes(y=aveAd3,x=aveCRC8)) + geom_point(alpha = 0.3) + geom_smooth(method = "lm",color="red",formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 0.3,size=3)+ggtitle("DepMap Essential Genes: PWD_vs_Log2CPM")
+```
+
+```{r, echo=FALSE}
+ggplot(Nona_essential_depmap,aes(y=aveCRC8,x=Log2_CPM)) + geom_point(alpha = 0.3) + geom_smooth(method = "lm",color="red",formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 0.3,size=3)+ggtitle("DepMap Essential Genes: PWD_vs_Log2CPM")
+```
+
+## Preliminary Conclusion
+
+More variably and highly expressed genes are more conserved in normal and neoplastic colon.
+
+Colon epithelial average gene expression (log2 CPM) and variability (variance) can be calculated from single cell RNA-seq data and correlated (Pearson coefficient values in parenthesis) with gene conservation (PWD). Negative and significant correlations (p \< 0.05) were observed between gene PWDs and gene expression/variability.
 
 ## Things to do
 
-- Download the transcription factor binding sites from [JASPAR database](https://jaspar.genereg.net/) to compare the regions we found interesting to examine if this hypothesis still stands in terms of transcriptome markers.
+-   Download the transcription factor binding sites from [JASPAR database](https://jaspar.genereg.net/) to compare the regions we found interesting to examine if this hypothesis still stands in terms of transcriptome markers.
