@@ -23,23 +23,40 @@ This project is based on the paper called ["Functional human genes typically exh
 -   Recauculated the relationship between Colon epithelial average gene expression (log2 CPM) and variability (variance) with gene conservation (PWD)
 -   Reproduced and optimize drawn figure for a better visualization of the relationship
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
 ```{r install libraries, message=FALSE,results = 'hide',include=FALSE}
-list.of.packages <- c("readxl", "dplyr","ggpubr","ggstatsplot","cowplot","devtools")
+list.of.packages <- c("readxl", "dplyr","ggpubr","ggstatsplot","cowplot","devtools","Matrix","data.table")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 ```
 
-```{r load libraries,message=FALSE,include=FALSE}
+```{r load libraries,message=FALSE}
 library(readxl)
 library(dplyr)
 library(cowplot)
 library(ggplot2)
 library(ggpubr)
 library(devtools)
+library(Matrix)
+library(data.table)
+```
+
+# Normal Colon data
+
+Read Single cell RNA-seq data from normal colon (GSE125970 (38)).For normal colon, all rectal and colon cells were analyzed, and all epithelial cells were analyzed for the CRCs. Raw reads were converted to CPM (reads divided by total reads) and then to log2CPM (x+1). Average gene log2CPM expression and log2CPM variance were calculated for all cells, including zero values.
+
+Colon epithelial average gene expression (log2 CPM) and variability (variance) can be calculated from single cell RNA-seq data.
+
+Based on DepMap data [1] to identify “essential” genes.
+
+```{r}
+nmx <- readxl::read_xlsx("Normal_colon.xlsx")
 ```
 
 ```{r,include=FALSE}
-nmx <- readxl::read_xlsx("Normal_colon.xlsx")
 essential_depmap<-nmx %>%
   filter(nmx$`common essential DepMap`!="#N/A")
 Not_essential_depmap<-nmx[1220:19525,]
@@ -48,77 +65,128 @@ Nona_NotDepMap <- dplyr::filter(Not_essential_depmap, !is.na(`ave NN3`))
 Nona_NN <- dplyr::filter(nmx, !is.na(`ave NN3`))
 ```
 
-```{r, include=FALSE}
-colnames(Nona_NN)[2] <-"Log2_CPM"
-colnames(Nona_NN)[3] <-"Log2_CPM_variance"
-colnames(Nona_NN)[4] <-"NN3_genePWD"
-colnames(Nona_essential_depmap)[2] <-"Log2_CPM"
-colnames(Nona_essential_depmap)[3] <-"Log2_CPM_variance"
-colnames(Nona_essential_depmap)[4] <-"NN3_genePWD"
-colnames(Nona_essential_depmap)[2] <-"Log2_CPM"
-colnames(Nona_essential_depmap)[3] <-"Log2_CPM_variance"
-colnames(Nona_essential_depmap)[4] <-"NN3_genePWD"
+```{r,include=FALSE}
+sum(is.na(essential_depmap))
 ```
 
-```{r, include=FALSE}
+```{r, change column names}
+change_col_name <- function(df){
+  colnames(df)[2] <-"Log2_CPM"
+  colnames(df)[3] <-"Log2_CPM_variance"
+  colnames(df)[4] <-"NN3_genePWD"
+  return(df)
+}
+dfs <- list(Nona_NN)
+Nona_NN <-lapply(dfs, change_col_name )
+Nona_NN <- rbindlist(Nona_NN)
+dfs <- list(Nona_essential_depmap)
+Nona_essential_depmap <-lapply(dfs, change_col_name )
+Nona_essential_depmap <- rbindlist(Nona_essential_depmap)
+dfs <- list(Nona_NotDepMap)
+Nona_NotDepMap <-lapply(dfs, change_col_name )
+Nona_NotDepMap <- rbindlist(Nona_NotDepMap)
+```
+
+```{r,include=FALSE}
 Nona_NN$`common essential DepMap`[!is.na(Nona_NN$`common essential DepMap`)] <- "DepMap_Essential"
 Nona_NN$`common essential DepMap`[is.na(Nona_NN$`common essential DepMap`)] <- "Not_DepMap_Essential"
 ```
 
-### DepMap Essential Genes
+## DepMap Essential Genes
 
 ```{r}
 cor(Nona_essential_depmap$NN3_genePWD, Nona_essential_depmap$Log2_CPM, method = c("pearson", "kendall", "spearman"))
 cor.test(Nona_essential_depmap$NN3_genePWD, Nona_essential_depmap$Log2_CPM, method=c("pearson", "kendall", "spearman"))
 ```
 
-If the correlation coefficient is greater than zero, it is a positive relationship. Conversely, if the value is less than zero, it is a negative relationship. A value of zero indicates that there is no relationship between the two variables.
+If the correlation coefficient is greater than zero, it is a positive relationship. Conversely, if the value is less than zero, it is a negative relationship. A value of zero indicates that there is no relationship between the two variables. From the result, negative and significant correlations (p < 0.05) were observed between gene PWDs and gene expression/variability.
 
 ```{r}
 cor.test(Nona_essential_depmap$NN3_genePWD, Nona_essential_depmap$Log2_CPM, alternative = "less")
 ```
 
-```{r, echo=FALSE}
-smoothScatter(Nona_essential_depmap$NN3_genePWD~ Nona_essential_depmap$Log2_CPM,main = "Essential_depmap_normal_colon",ylab = "gene conservation(PWD)",xlab = "Log2_CPM")
-abline(lm(Nona_essential_depmap$NN3_genePWD~ Nona_essential_depmap$Log2_CPM), col="red2", lty=1, lwd=3)
+### Visualization
+
+#### Figures Reproduced
+
+```{r,echo=FALSE}
+ggplot(Nona_essential_depmap,aes(y=NN3_genePWD,x=Log2_CPM)) + geom_point(alpha = 0.3) + geom_smooth(method = "lm",color="red",formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 0.14,size=3)+ggtitle("Reproced expression Essential Genes: PWD_vs_Log2CPM")
+```
+```{r,echo=FALSE}
+ggplot(Nona_essential_depmap,aes(y=NN3_genePWD,x=Log2_CPM_variance)) + geom_point(alpha = 0.3) + geom_smooth(method = "lm",color="red",formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 0.14,size=3)+ggtitle("Reproced variavility Essential Genes: PWD_vs_Log2CPM")
 ```
 
-```{r, echo=FALSE}
-smoothScatter(Nona_essential_depmap$Log2_CPM~ Nona_essential_depmap$NN3_genePWD,main = "Essential_depmap_normal_colon",xlab = "gene conservation(PWD)",ylab = "Log2_CPM")
-```
+#### Density Plots & Change Y-X axis
 
-```{r, echo=FALSE}
+```{r,echo=FALSE}
+smoothScatter(Nona_essential_depmap$Log2_CPM~ Nona_essential_depmap$NN3_genePWD,main = "Essential_depmap_normal_colon: Log2CPM vs PWD",xlab = "gene conservation(PWD)",ylab = "Log2_CPM")
+```
+```{r,echo=FALSE}
 # Bin size control + color palette
 ggplot(Nona_essential_depmap, aes(x=NN3_genePWD, y=Log2_CPM) ) + xlab ("gene conservation(PWD)")+ylab( "Log2_CPM")+geom_bin2d() +
   scale_fill_continuous(type = "viridis") +
   theme_bw()
 ```
 
-```{r, echo=FALSE}
-ggplot(Nona_essential_depmap,aes(x=NN3_genePWD,y=Log2_CPM)) + geom_point(alpha = 0.3) + geom_smooth(color="red",method ='loess',formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 8,size=3)+ggtitle("DepMap Essential Genes: Log2CPM_vs_PWD")
+Many PWDs are concentrated in the range from 0.06 to 0.08 
+
+```{r,echo=FALSE}
+ggplot(Nona_essential_depmap,aes(x=NN3_genePWD,y=Log2_CPM)) + geom_point(alpha = 0.3) + geom_smooth(color="red",method ='lm',formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 8,size=3)+ggtitle("Expression Essential Genes: Log2CPM_vs_PWD")
 ```
 
-```{r, echo=FALSE}
-ggplot(Nona_essential_depmap,aes(y=NN3_genePWD,x=Log2_CPM)) + geom_point(alpha = 0.3) + geom_smooth(method = "lm",color="red",formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 0.3,size=3)+ggtitle("DepMap Essential Genes: PWD_vs_Log2CPM")
+```{r,echo=FALSE}
+ggplot(Nona_essential_depmap,aes(x=NN3_genePWD,y=Log2_CPM_variance)) + geom_point(alpha = 0.3) + geom_smooth(color="red",method ='lm',formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 12,size=3)+ggtitle("Variance Essential Genes: Log2CPM_vs_PWD")
 ```
 
-```{r, echo=FALSE}
-ggplot(Nona_essential_depmap,aes(y=aveAd3,x=Log2_CPM)) + geom_point(alpha = 0.3) + geom_smooth(method = "lm",color="red",formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 0.3,size=3)+ggtitle("DepMap Essential Genes: PWD_vs_Log2CPM")
+## Non-DepMap Essential Genes
+
+```{r}
+cor(Nona_NotDepMap$NN3_genePWD, Nona_NotDepMap$Log2_CPM, method = c("pearson", "kendall", "spearman"))
+cor.test(Nona_NotDepMap$NN3_genePWD, Nona_NotDepMap$Log2_CPM, method=c("pearson", "kendall", "spearman"))
 ```
 
-```{r, echo=FALSE}
-ggplot(Nona_essential_depmap,aes(y=aveAd3,x=aveCRC8)) + geom_point(alpha = 0.3) + geom_smooth(method = "lm",color="red",formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 0.3,size=3)+ggtitle("DepMap Essential Genes: PWD_vs_Log2CPM")
+### Visualization
+
+#### Figures Reproduced
+
+```{r,echo=FALSE}
+ggplot(Nona_NotDepMap,aes(y=NN3_genePWD,x=Log2_CPM)) + geom_point(alpha = 0.3) + geom_smooth(method = "lm",color="red",formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 0.4,size=3)+ggtitle("Reproced expression Non-Essential Genes: PWD_vs_Log2CPM")
+```
+```{r,echo=FALSE}
+ggplot(Nona_NotDepMap,aes(y=NN3_genePWD,x=Log2_CPM_variance)) + geom_point(alpha = 0.3) + geom_smooth(method = "lm",color="red",formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 0.4,size=3)+ggtitle("Reproced variavility Essential Genes: PWD_vs_Log2CPM")
 ```
 
-```{r, echo=FALSE}
-ggplot(Nona_essential_depmap,aes(y=aveCRC8,x=Log2_CPM)) + geom_point(alpha = 0.3) + geom_smooth(method = "lm",color="red",formula = y~x) + stat_cor(method = "pearson", label.x = 0.02, label.y = 0.3,size=3)+ggtitle("DepMap Essential Genes: PWD_vs_Log2CPM")
+#### Density Plots & Change Y-X axis
+
+```{r,echo=FALSE}
+smoothScatter(Nona_NotDepMap$Log2_CPM~ Nona_NotDepMap$NN3_genePWD,main = "Non-Essential_depmap_normal_colon: Log2CPM vs PWD",xlab = "gene conservation(PWD)",ylab = "Log2_CPM")
 ```
+
+```{r,echo=FALSE}
+# Bin size control + color palette
+ggplot(Nona_NotDepMap, aes(x=NN3_genePWD, y=Log2_CPM) ) + xlab ("gene conservation(PWD)")+ylab( "Log2_CPM")+geom_bin2d() +
+  scale_fill_continuous(type = "viridis") +
+  theme_bw()
+```
+
+Many PWDs are concentrated in the range from 0.05 to 0.15
+
+```{r,echo=FALSE}
+ggplot(Nona_NotDepMap,aes(x=NN3_genePWD,y=Log2_CPM)) + geom_point(alpha = 0.3) + geom_smooth(color="red",method ='lm',formula = y~x) + stat_cor(method = "pearson", label.x = 0.3, label.y = 8,size=3)+ggtitle("Non-Expression Essential Genes: Log2CPM_vs_PWD")
+```
+
+```{r,echo=FALSE}
+ggplot(Nona_NotDepMap,aes(x=NN3_genePWD,y=Log2_CPM_variance)) + geom_point(alpha = 0.3) + geom_smooth(color="red",method ='lm',formula = y~x) + stat_cor(method = "pearson", label.x = 0.3, label.y = 12,size=3)+ggtitle("Non-Variance Essential Genes: Log2CPM_vs_PWD")
+```
+
 
 ## Preliminary Conclusion
 
 More variably and highly expressed genes are more conserved in normal and neoplastic colon.
 
 Colon epithelial average gene expression (log2 CPM) and variability (variance) can be calculated from single cell RNA-seq data and correlated (Pearson coefficient values in parenthesis) with gene conservation (PWD). Negative and significant correlations (p \< 0.05) were observed between gene PWDs and gene expression/variability.
+
+PWDs in DepMap essential genes are concentrated in the range from 0.06 to 0.08 and PWDs in Non-DepMap essential gene are concentrated in the range from 0.05 to 0.15.
 
 ## Things to do
 
