@@ -1,7 +1,7 @@
 README
 ================
-yutian
-2022-12-22
+Yutian Liu
+2023-01-20
 
 # Research on the correlation between functional human genes and epigenetic conservation
 
@@ -40,6 +40,7 @@ library(ggplot2)
 library(ggpubr)
 library(devtools)
 library(Matrix)
+library(ggridges)
 library(data.table)
 ```
 
@@ -187,6 +188,72 @@ Many PWDs are concentrated in the range from 0.05 to 0.15
 
 ![](README_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
+## Comparison between Essential genes & Non-Essential genes
+
+``` r
+# Plot distributions
+Nona_NN %>%
+  ggplot(aes(x = Log2_CPM,
+             y = `common essential DepMap`,
+             fill = `common essential DepMap`)) +
+  ggridges::geom_density_ridges(bandwidth = 4) + ggtitle("Essential, Non-essential gene expression comparison ")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+
+``` r
+# Compute the mean for and size of each group
+group_means <-
+  Nona_NN %>%
+  group_by(`common essential DepMap`) %>%
+  summarise(mean = mean(Log2_CPM),
+            n = n())
+
+group_means
+```
+
+    ## # A tibble: 2 × 3
+    ##   `common essential DepMap`  mean     n
+    ##   <chr>                     <dbl> <int>
+    ## 1 DepMap_Essential           2.28  1152
+    ## 2 Not_DepMap_Essential       1.16 13290
+
+``` r
+# Create our data visualisation
+Nona_NN %>%
+  ggplot(aes(x = `common essential DepMap`, y = Log2_CPM, fill = `common essential DepMap`)) +
+  geom_boxplot() +
+
+  # Add the mean for each group
+  geom_point(data = group_means,
+             aes(x = `common essential DepMap`, y = mean),
+             shape = 3,
+             size = 2)
+```
+
+![](README_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
+
+``` r
+# Compute the mean for and size of each group
+group_means <-
+  Nona_NN %>%
+  group_by(`common essential DepMap`) %>%
+  summarise(mean = mean(NN3_genePWD),
+            n = n())
+# Create our data visualisation
+Nona_NN %>%
+  ggplot(aes(x = `common essential DepMap`, y = NN3_genePWD, fill = `common essential DepMap`)) +
+  geom_boxplot() +
+
+  # Add the mean for each group
+  geom_point(data = group_means,
+             aes(x = `common essential DepMap`, y = mean),
+             shape = 3,
+             size = 2)
+```
+
+![](README_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
+
 ## Preliminary Conclusion
 
 More variably and highly expressed genes are more conserved in normal
@@ -201,6 +268,23 @@ were observed between gene PWDs and gene expression/variability.
 PWDs in DepMap essential genes are concentrated in the range from 0.06
 to 0.08 and PWDs in Non-DepMap essential gene are concentrated in the
 range from 0.05 to 0.15.
+
+## 1.20 Update Interactive Plots about TFs in paper
+
+In the paper “Transcription factor expression as a predictor of colon
+cancer prognosis: a machine learning practice”They identified five
+transcription factors for the predictive model, and they are HOXC9,
+ZNF556, HEYL, HOXC4 and HOXC6. Those five TFs(transcription factors) are
+not in the common essential genes list. And in the paper “DNA
+methylation events in transcription factors and gene expression changes
+in colon cancer”, they selected 44 m-genes (methylation associated
+genes) which showed a partial correlation adjusting by stromal content.
+Those interactive plots are saved in this link. [Interactive
+Plots](https://yutianl.shinyapps.io/DNAMethylationScatterPl/) You can
+chose from the right legend and click the button twice to isolate them
+for a better visualization. Choose the `Log2_CPM` as the Y variable and
+`NN3_genePWD` as the X variable to view the association between gene
+expression and pair distance.
 
 ## Things to do
 
