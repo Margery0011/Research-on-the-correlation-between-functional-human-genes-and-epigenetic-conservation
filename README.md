@@ -1,7 +1,7 @@
 README
 ================
 Yutian Liu
-2023-01-20
+2023-01-23
 
 # Research on the correlation between functional human genes and epigenetic conservation
 
@@ -26,11 +26,11 @@ protect it.
 
 ## Things have done
 
-- Recauculated the relationship between Colon epithelial average gene
-  expression (log2 CPM) and variability (variance) with gene
-  conservation (PWD)
-- Reproduced and optimize drawn figure for a better visualization of the
-  relationship
+-   Recauculated the relationship between Colon epithelial average gene
+    expression (log2 CPM) and variability (variance) with gene
+    conservation (PWD)
+-   Reproduced and optimize drawn figure for a better visualization of
+    the relationship
 
 ``` r
 library(readxl)
@@ -286,9 +286,90 @@ for a better visualization. Choose the `Log2_CPM` as the Y variable and
 `NN3_genePWD` as the X variable to view the association between gene
 expression and pair distance.
 
+## 1.23 Update: Target gene candidate transcription factor prediction，HOXC4 as the example
+
+JASPAR (<http://jaspar.genereg.net/>) is an open-access database
+containing manually curated, non-redundant transcription factor (TF)
+binding profiles for TFs across six taxonomic groups. They have released
+the 9th version at 2022 which I am going to use.
+
+### Obtain the base sequence of the potential promoter region of the target gene
+
+Go to NCBI [gene database](https://www.ncbi.nlm.nih.gov/gene/), search
+for HOXC4, then find the genomic location information of the gene in the
+“Genomic context”directory. It shows that HOXC4 is located at Chr12:
+54016888 - 54056030. ![Genomic
+context](https://github.com/Margery0011/Capstone_Project/blob/main/Figures/fig1.png)
+
+It is generally believed that the region 1000\~2000bp upstream of the
+gene transcription start site is the promoter region of the gene. The
+red arrow in the map below indicates that the gene is located in the
+sense strand, and the direction of transcription is from left to right,
+that is, the potential promoter region of the HOXC4 gene is
+Chr12:54014888-54016888
+
+Next, click the FASTA button in the Genomic regions, transcripts, and
+products directory, enter the location information of the HOXC4 gene
+promoter region on the right, and click Update View to get the potential
+promoter sequence of the gene. Save the ![FASTA
+result](https://github.com/Margery0011/Capstone_Project/blob/main/Figures/fig2.png)
+for later.
+
+### Predict potential transcription factors that bind to target gene promoter regions
+
+Enter the [UCSC database](http://genome.ucsc.edu/) homepage, select
+Track Hubs from the My Data drop-down menu and click to enter, enter
+JASPAR in the Public Hubs search bar, click Search Public Hubs, find
+Connect in the search results and click, the page refreshes to prompt
+JASPAR Track loaded successfully.
+
+Return to the UCSC homepage, select the genome version consistent with
+the above from the Genomes drop-down menu, and the page is refreshed to
+display the genome information browsing page. Click hide all to hide all
+tracks, then select pack in the drop-down menu of the latest version of
+JASPAR, and then click refresh in the upper right corner to set it to
+only retain the information interface of JASPAR track.
+
+Enter the position Chr12:54014888-554016888 of the potential promoter
+region of the HOXC4 gene in the search box, and click GO to get the
+potential transcription factors bound to the promoter region of the RET
+gene. The direction of the arrow behind the transcription factor
+indicates the transcription direction, and the transcription factor that
+is consistent with the transcription direction of the target gene is
+preferred; the color of the arrow behind the transcription factor
+indicates the prediction score. The darker the color, the higher the
+score, and the more reliable the corresponding prediction result. Click
+JASPAR to enter the setting interface. Generally, the Minimum Score
+above 200 can be regarded as statistically significant. Since there are
+many predicted transcription factors, I set 500 as the Minimum Score
+here, and the page refresh shows that the predicted transcription
+factors are significantly reduced.
+
+### Predict the binding site sequence of candidate transcription factors in the target gene promoter region
+
+Take the four transcription factors ZNF148, ZNF384,MTF1whose arrows are
+predicted to be darker in color as examples. ![UCSC Genome
+Browser](https://github.com/Margery0011/Capstone_Project/blob/main/Figures/fig3.png)
+
+Enter the JASPAR homepage, enter NFIC in the search box, set the same as
+the above, select the latest version of the search result, tick the
+front, and click Add to cart on the right. Add other transcription
+factors to the shopping cart in the same way, and then click View cart.
+
+On the right toolbar Scan, find the potential promoter region sequence
+of the RET gene queried from the NCBI database above in FASTA format,
+copy all of them and paste them into the search box. The threshold is
+80% by default. When there are many prediction results, the threshold
+can be increased. Set 85% here , click Scan, the page is refreshed, and
+the result shows the predicted binding site sequence.
+
+Prediction score, the higher the score, the more reliable the prediction
+result; the start and end positions of the TFBS sequence; the specific
+base sequence. Click Copy to save the prediction results.
+
 ## Things to do
 
-- Download the transcription factor binding sites from [JASPAR
-  database](https://jaspar.genereg.net/) to compare the regions we found
-  interesting to examine if this hypothesis still stands in terms of
-  transcriptome markers.
+-   Download the transcription factor binding sites from [JASPAR
+    database](https://jaspar.genereg.net/) to compare the regions we
+    found interesting to examine if this hypothesis still stands in
+    terms of transcriptome markers.
