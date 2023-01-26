@@ -1,7 +1,7 @@
 README
 ================
 Yutian Liu
-2023-01-23
+2023-01-26
 
 # Research on the correlation between functional human genes and epigenetic conservation
 
@@ -26,11 +26,11 @@ protect it.
 
 ## Things have done
 
--   Recauculated the relationship between Colon epithelial average gene
-    expression (log2 CPM) and variability (variance) with gene
-    conservation (PWD)
--   Reproduced and optimize drawn figure for a better visualization of
-    the relationship
+- Recauculated the relationship between Colon epithelial average gene
+  expression (log2 CPM) and variability (variance) with gene
+  conservation (PWD)
+- Reproduced and optimize drawn figure for a better visualization of the
+  relationship
 
 ``` r
 library(readxl)
@@ -367,9 +367,165 @@ Prediction score, the higher the score, the more reliable the prediction
 result; the start and end positions of the TFBS sequence; the specific
 base sequence. Click Copy to save the prediction results.
 
+## 0126 Update TFBSTools identifies transcription factor binding sites
+
+### TFSTools interacts with JASPAR2022 to obtain PWM(position weight matrices)
+
+Data needed :
+
+PWM, position weight matrices, transcription factors binding sequence
+(From Jaspar)
+
+A DNA sequence, or fasta format sequence(From NCBI)
+
+Here, I am using the 5 TFs(HOXC9, ZNF556, HEYL, HOXC4 and HOXC6)
+mentioned before as an example to show the result.
+
+``` r
+opts <- list()
+opts[["species"]] <- 'Homo sapiens'
+opts["collection"] <-  'CORE'
+PFMatrixList <- getMatrixSet(JASPAR2022, opts)
+## To PWM
+pwm <- toPWM(PFMatrixList)
+pwm
+```
+
+    ## PWMatrixList of length 692
+    ## names(692): MA0030.1 MA0031.1 MA0051.1 MA0059.1 ... MA1630.2 MA1633.2 MA0597.2
+
+### Download sequence FASTA file from NCBI
+
+### Gene Name Transfer
+
+HOXC9, ZNF556, HEYL, HOXC4 and HOXC6 are symbol names, transfer them
+into Entrezid for fetching them from NCBI.
+
+``` r
+E_genes <- c("HOXC9", "ZNF556", "HEYL", "HOXC4", "HOXC6")
+gene_map <- select(org.Hs.eg.db, keys=E_genes, keytype="SYMBOL", columns=c("ENTREZID", "SYMBOL"))
+```
+
+    ## 'select()' returned 1:1 mapping between keys and columns
+
+``` r
+gene_map
+```
+
+    ##   SYMBOL ENTREZID
+    ## 1  HOXC9     3225
+    ## 2 ZNF556    80032
+    ## 3   HEYL    26508
+    ## 4  HOXC4     3221
+    ## 5  HOXC6     3223
+
+Use `entrez_link()` section to find transcript for a given gene. I will
+fetch cDNA sequences of those transcripts. First, get nucleotide IDs for
+refseq transcripts of two genes:
+
+Then get the sequences with `entrez_fetch`, acquire the fasta format by
+setting the \`rettype\`\`
+
+``` r
+all_recs <- entrez_fetch(db="nucleotide", id=linked_transripts, rettype="fasta")
+cat(strwrap(substr(all_recs, 1, 500)), sep="\n")
+```
+
+    ## >XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH
+    ## transcription factor with YRPW motif like (HEYL), transcript variant
+    ## X1, mRNA
+    ## GGGTTGCAGGAGCCGGAGCCACCGCGCCGCGGTACGCGGTTCCCCGACGGCCGCCGCGAGGGGCGAGGAG
+    ## CGAGGAGCGAGGGGCGAAGGGCGAGGCCGAGCAGCCAGATGGCCAGGCCGCTGTCCACCCCCAGCTCTTC
+    ## GCAGATGCAAGCCAGGAAGAAACACAGAGGGATCATAGAGAAACGGCGTCGAGACCGCATCAACAGTAGC
+    ## CTTTCTGAATTGCGACGCTTGGTCCCCACTGCCTTTGAGAAACAGGGCTCTTCCAAGCTGGAGAAAGCCG
+    ## AGGTCTTGCAGATGACGGTGGATCACTTGAAAATGCTCCATGCCACTGGTGGGACAGGATTCTTTGATGC
+    ## CCG
+
+``` r
+write(all_recs, file="my5transcripts.fasta")
+```
+
+``` r
+# Load weight file 
+data(MA0003.2)
+pwm <- PWMatrixList(MA0003.2=toPWM(MA0003.2))
+dnas <- Biostrings::readDNAStringSet("my5transcripts.fasta")
+sitesets <- searchSeq(pwm, dnas, seqname="seqs", min.score="80%", strand="+")
+## strand="+"，only test on + strand
+```
+
+``` r
+# look the result 
+head(writeGFF3(sitesets))
+```
+
+    ##                                                                                                                                                                                                                                                                                              seqname
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1 XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2 XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3 XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4 XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5 XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6 XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA
+    ##                                                                                                                                                         source
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1   TFBS
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2   TFBS
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3   TFBS
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4   TFBS
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5   TFBS
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6   TFBS
+    ##                                                                                                                                                         feature
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1    TFBS
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2    TFBS
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3    TFBS
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4    TFBS
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5    TFBS
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6    TFBS
+    ##                                                                                                                                                         start
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1   412
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2   422
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3   516
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4   524
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5   582
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6   693
+    ##                                                                                                                                                         end
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1 426
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2 436
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3 530
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4 538
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5 596
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6 707
+    ##                                                                                                                                                            score
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1 3.399009
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2 1.841406
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3 3.568339
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4 5.055859
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5 3.528688
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6 6.887269
+    ##                                                                                                                                                         strand
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1      +
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2      +
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3      +
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4      +
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5      +
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6      +
+    ##                                                                                                                                                         frame
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1     .
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2     .
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3     .
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4     .
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5     .
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6     .
+    ##                                                                                                                                                                                                   attributes
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1 TF=TFAP2A;class=Zipper-Type;sequence=AGGTACCTGGGGGTC
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2 TF=TFAP2A;class=Zipper-Type;sequence=GGGTCCTTGAAGGGC
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3 TF=TFAP2A;class=Zipper-Type;sequence=CACGCCCACTGGCCC
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4 TF=TFAP2A;class=Zipper-Type;sequence=CTGGCCCTTTGGCCT
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5 TF=TFAP2A;class=Zipper-Type;sequence=GCCAGCCCTGAGCAA
+    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6 TF=TFAP2A;class=Zipper-Type;sequence=CAGAGCCACAGGCAT
+
 ## Things to do
 
--   Download the transcription factor binding sites from [JASPAR
-    database](https://jaspar.genereg.net/) to compare the regions we
-    found interesting to examine if this hypothesis still stands in
-    terms of transcriptome markers.
+- Download the transcription factor binding sites from [JASPAR
+  database](https://jaspar.genereg.net/) to compare the regions we found
+  interesting to examine if this hypothesis still stands in terms of
+  transcriptome markers.

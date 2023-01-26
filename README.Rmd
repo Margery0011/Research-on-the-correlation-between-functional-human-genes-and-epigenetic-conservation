@@ -278,6 +278,99 @@ On the right toolbar Scan, find the potential promoter region sequence of the RE
 
 Prediction score, the higher the score, the more reliable the prediction result; the start and end positions of the TFBS sequence; the specific base sequence. Click Copy to save the prediction results.
 
+
+## 0126 Update TFBSTools identifies transcription factor binding sites
+
+```{r,include=FALSE,message=FALSE}
+if (!require("TFBSTools")){ 
+  BiocManager::install("TFBSTools")
+  library(TFBSTools)
+  }
+if (!require("JASPAR2022")){BiocManager::install("JASPAR2022")
+  suppressMessages(library(JASPAR2022))}
+
+if (!require("Biostrings")){BiocManager::install("Biostrings")
+  library(Biostrings)}
+
+```
+
+### TFSTools interacts with JASPAR2022 to obtain PWM(position weight matrices)
+
+Data needed :
+
+PWM, position weight matrices, transcription factors binding sequence (From Jaspar)
+
+A DNA sequence, or fasta format sequence(From NCBI)
+
+Here, I am using the 5 TFs(HOXC9, ZNF556, HEYL, HOXC4 and HOXC6) mentioned before as an example to show the result.  
+
+```{r acquire PWM}
+opts <- list()
+opts[["species"]] <- 'Homo sapiens'
+opts["collection"] <-  'CORE'
+PFMatrixList <- getMatrixSet(JASPAR2022, opts)
+## To PWM
+pwm <- toPWM(PFMatrixList)
+pwm
+```
+
+### Download sequence FASTA file from NCBI
+
+```{r Retrieving genome sequence data using rentrez,include=FALSE}
+if (!require("rentrez")){
+install.packages("rentrez")
+library(rentrez)}
+```
+
+### Gene Name Transfer
+
+HOXC9, ZNF556, HEYL, HOXC4 and HOXC6 are symbol names, transfer them into Entrezid for fetching them from NCBI.
+
+```{r, include=FALSE,message=FALSE}
+if (!require("org.Hs.eg.db")){
+  BiocManager::install("org.Hs.eg.db")
+  library(org.Hs.eg.db)
+}
+```
+```{r,echo=TRUE}
+E_genes <- c("HOXC9", "ZNF556", "HEYL", "HOXC4", "HOXC6")
+gene_map <- select(org.Hs.eg.db, keys=E_genes, keytype="SYMBOL", columns=c("ENTREZID", "SYMBOL"))
+gene_map
+```
+
+
+Use `entrez_link()` section to find transcript for a given gene. I will fetch cDNA sequences of those transcripts. First, get nucleotide IDs for refseq transcripts of two genes:
+
+```{r,include=FALSE}
+gene_ids <- gene_map$ENTREZID
+linked_seq_ids <- entrez_link(dbfrom="gene", id=gene_ids, db="nucleotide")
+linked_seq_ids$links
+linked_transripts <- linked_seq_ids$links$gene_nuccore_refseqrna
+head(linked_transripts)
+```
+
+Then get the sequences with `entrez_fetch`, acquire the fasta format by setting the `rettype``
+
+```{r}
+all_recs <- entrez_fetch(db="nucleotide", id=linked_transripts, rettype="fasta")
+cat(strwrap(substr(all_recs, 1, 500)), sep="\n")
+write(all_recs, file="my5transcripts.fasta")
+```
+
+```{r}
+# Load weight file 
+data(MA0003.2)
+pwm <- PWMatrixList(MA0003.2=toPWM(MA0003.2))
+dnas <- Biostrings::readDNAStringSet("my5transcripts.fasta")
+sitesets <- searchSeq(pwm, dnas, seqname="seqs", min.score="80%", strand="+")
+## strand="+"，only test on + strand
+```
+
+```{r}
+# look the result 
+head(writeGFF3(sitesets))
+```
+
 ## Things to do
 
 -   Download the transcription factor binding sites from [JASPAR database](https://jaspar.genereg.net/) to compare the regions we found interesting to examine if this hypothesis still stands in terms of transcriptome markers.
