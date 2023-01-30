@@ -332,6 +332,7 @@ if (!require("org.Hs.eg.db")){
   library(org.Hs.eg.db)
 }
 ```
+
 ```{r,echo=TRUE}
 E_genes <- c("HOXC9", "ZNF556", "HEYL", "HOXC4", "HOXC6")
 gene_map <- select(org.Hs.eg.db, keys=E_genes, keytype="SYMBOL", columns=c("ENTREZID", "SYMBOL"))
@@ -339,37 +340,59 @@ gene_map
 ```
 
 
-Use `entrez_link()` section to find transcript for a given gene. I will fetch cDNA sequences of those transcripts. First, get nucleotide IDs for refseq transcripts of two genes:
+## 0130 update: Get the promoter sequence to find TFBS
 
 ```{r,include=FALSE}
 gene_ids <- gene_map$ENTREZID
-linked_seq_ids <- entrez_link(dbfrom="gene", id=gene_ids, db="nucleotide")
-linked_seq_ids$links
-linked_transripts <- linked_seq_ids$links$gene_nuccore_refseqrna
-head(linked_transripts)
-```
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
 
-Then get the sequences with `entrez_fetch`, acquire the fasta format by setting the `rettype``
-
-```{r}
-all_recs <- entrez_fetch(db="nucleotide", id=linked_transripts, rettype="fasta")
-cat(strwrap(substr(all_recs, 1, 500)), sep="\n")
-write(all_recs, file="my5transcripts.fasta")
+BiocManager::install("TxDb.Hsapiens.UCSC.hg19.knownGene")
+BiocManager::install("BSgenome.Hsapiens.UCSC.hg19")
+library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+library(BSgenome.Hsapiens.UCSC.hg19)
 ```
 
 ```{r}
-# Load weight file 
-data(MA0003.2)
-pwm <- PWMatrixList(MA0003.2=toPWM(MA0003.2))
-dnas <- Biostrings::readDNAStringSet("my5transcripts.fasta")
-sitesets <- searchSeq(pwm, dnas, seqname="seqs", min.score="80%", strand="+")
-## strand="+"，only test on + strand
+transcriptCoordsByGene.GRangesList <-
+     transcriptsBy (TxDb.Hsapiens.UCSC.hg19.knownGene, by = "gene") [gene_ids]
+promoter.seqs <- getPromoterSeq (transcriptCoordsByGene.GRangesList,
+                                   Hsapiens, upstream=2000, downstream=100)
+```
+```{r}
+gene_map
 ```
 
 ```{r}
-# look the result 
-head(writeGFF3(sitesets))
+HOXC4 <- promoter.seqs$`3221`
+HOXC4sitesets <- searchSeq(pwm, HOXC4, seqname="HOXC4", min.score="80%", strand="+")
+head(writeGFF3(HOXC4sitesets))
 ```
+
+```{r}
+HOXC9 <- promoter.seqs$`3225`
+HOXC9sitesets <- searchSeq(pwm, HOXC9, seqname="HOXC9", min.score="80%", strand="+")
+head(writeGFF3(HOXC9sitesets))
+```
+```{r}
+HOXC6 <- promoter.seqs$`3223`
+HOXC6sitesets <- searchSeq(pwm, HOXC6, seqname="HOXC6", min.score="80%", strand="+")
+head(writeGFF3(HOXC6sitesets))
+```
+
+```{r}
+HEYL <- promoter.seqs$`26508`
+HEYLsitesets <- searchSeq(pwm, HEYL, seqname="HEYL", min.score="80%", strand="+")
+head(writeGFF3(HEYLsitesets))
+```
+
+```{r}
+ZNF566 <- promoter.seqs$`80032`
+ZNF566sitesets <- searchSeq(pwm, ZNF566, seqname="ZNF566", min.score="80%", strand="+")
+head(writeGFF3(ZNF566sitesets))
+```
+
+
 
 ## Things to do
 

@@ -1,7 +1,7 @@
 README
 ================
 Yutian Liu
-2023-01-26
+2023-01-30
 
 # Research on the correlation between functional human genes and epigenetic conservation
 
@@ -419,109 +419,130 @@ gene_map
     ## 4  HOXC4     3221
     ## 5  HOXC6     3223
 
-Use `entrez_link()` section to find transcript for a given gene. I will
-fetch cDNA sequences of those transcripts. First, get nucleotide IDs for
-refseq transcripts of two genes:
-
-Then get the sequences with `entrez_fetch`, acquire the fasta format by
-setting the \`rettype\`\`
+## 0130 update: Get the promoter sequence to find TFBS
 
 ``` r
-all_recs <- entrez_fetch(db="nucleotide", id=linked_transripts, rettype="fasta")
-cat(strwrap(substr(all_recs, 1, 500)), sep="\n")
-```
-
-    ## >XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH
-    ## transcription factor with YRPW motif like (HEYL), transcript variant
-    ## X1, mRNA
-    ## GGGTTGCAGGAGCCGGAGCCACCGCGCCGCGGTACGCGGTTCCCCGACGGCCGCCGCGAGGGGCGAGGAG
-    ## CGAGGAGCGAGGGGCGAAGGGCGAGGCCGAGCAGCCAGATGGCCAGGCCGCTGTCCACCCCCAGCTCTTC
-    ## GCAGATGCAAGCCAGGAAGAAACACAGAGGGATCATAGAGAAACGGCGTCGAGACCGCATCAACAGTAGC
-    ## CTTTCTGAATTGCGACGCTTGGTCCCCACTGCCTTTGAGAAACAGGGCTCTTCCAAGCTGGAGAAAGCCG
-    ## AGGTCTTGCAGATGACGGTGGATCACTTGAAAATGCTCCATGCCACTGGTGGGACAGGATTCTTTGATGC
-    ## CCG
-
-``` r
-write(all_recs, file="my5transcripts.fasta")
+transcriptCoordsByGene.GRangesList <-
+     transcriptsBy (TxDb.Hsapiens.UCSC.hg19.knownGene, by = "gene") [gene_ids]
+promoter.seqs <- getPromoterSeq (transcriptCoordsByGene.GRangesList,
+                                   Hsapiens, upstream=2000, downstream=100)
 ```
 
 ``` r
-# Load weight file 
-data(MA0003.2)
-pwm <- PWMatrixList(MA0003.2=toPWM(MA0003.2))
-dnas <- Biostrings::readDNAStringSet("my5transcripts.fasta")
-sitesets <- searchSeq(pwm, dnas, seqname="seqs", min.score="80%", strand="+")
-## strand="+"，only test on + strand
+gene_map
 ```
+
+    ##   SYMBOL ENTREZID
+    ## 1  HOXC9     3225
+    ## 2 ZNF556    80032
+    ## 3   HEYL    26508
+    ## 4  HOXC4     3221
+    ## 5  HOXC6     3223
 
 ``` r
-# look the result 
-head(writeGFF3(sitesets))
+HOXC4 <- promoter.seqs$`3221`
+HOXC4sitesets <- searchSeq(pwm, HOXC4, seqname="HOXC4", min.score="80%", strand="+")
+head(writeGFF3(HOXC4sitesets))
 ```
 
-    ##                                                                                                                                                                                                                                                                                              seqname
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1 XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2 XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3 XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4 XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5 XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6 XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA
-    ##                                                                                                                                                         source
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1   TFBS
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2   TFBS
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3   TFBS
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4   TFBS
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5   TFBS
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6   TFBS
-    ##                                                                                                                                                         feature
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1    TFBS
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2    TFBS
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3    TFBS
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4    TFBS
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5    TFBS
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6    TFBS
-    ##                                                                                                                                                         start
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1   412
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2   422
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3   516
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4   524
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5   582
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6   693
-    ##                                                                                                                                                         end
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1 426
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2 436
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3 530
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4 538
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5 596
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6 707
-    ##                                                                                                                                                            score
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1 3.399009
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2 1.841406
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3 3.568339
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4 5.055859
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5 3.528688
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6 6.887269
-    ##                                                                                                                                                         strand
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1      +
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2      +
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3      +
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4      +
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5      +
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6      +
-    ##                                                                                                                                                         frame
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1     .
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2     .
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3     .
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4     .
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5     .
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6     .
-    ##                                                                                                                                                                                                   attributes
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.1 TF=TFAP2A;class=Zipper-Type;sequence=AGGTACCTGGGGGTC
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.2 TF=TFAP2A;class=Zipper-Type;sequence=GGGTCCTTGAAGGGC
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.3 TF=TFAP2A;class=Zipper-Type;sequence=CACGCCCACTGGCCC
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.4 TF=TFAP2A;class=Zipper-Type;sequence=CTGGCCCTTTGGCCT
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.5 TF=TFAP2A;class=Zipper-Type;sequence=GCCAGCCCTGAGCAA
-    ## MA0003.2.XM_005270745.4 PREDICTED: Homo sapiens hes related family bHLH transcription factor with YRPW motif like (HEYL), transcript variant X1, mRNA.6 TF=TFAP2A;class=Zipper-Type;sequence=CAGAGCCACAGGCAT
+    ##                 seqname source feature start  end     score strand frame
+    ## MA0030.1.3221      3221   TFBS    TFBS  1831 1844  9.033045      +     .
+    ## MA0030.1.3221.1    3221   TFBS    TFBS   466  479  7.109460      +     .
+    ## MA0030.1.3221.2    3221   TFBS    TFBS   477  490 11.821670      +     .
+    ## MA0030.1.3221.3    3221   TFBS    TFBS   922  935  8.837639      +     .
+    ## MA0031.1.3221.1    3221   TFBS    TFBS  1181 1188  8.475101      +     .
+    ## MA0031.1.3221.2    3221   TFBS    TFBS  1497 1504  5.803724      +     .
+    ##                                                                            attributes
+    ## MA0030.1.3221   TF=FOXF2;class=Fork head/winged helix factors;sequence=ATTGGGTAAACATG
+    ## MA0030.1.3221.1 TF=FOXF2;class=Fork head/winged helix factors;sequence=GTCTAATAAATAAA
+    ## MA0030.1.3221.2 TF=FOXF2;class=Fork head/winged helix factors;sequence=AAAACATAAACAGT
+    ## MA0030.1.3221.3 TF=FOXF2;class=Fork head/winged helix factors;sequence=TACATGTAAACACA
+    ## MA0031.1.3221.1       TF=FOXD1;class=Fork head/winged helix factors;sequence=GTAAAAAG
+    ## MA0031.1.3221.2       TF=FOXD1;class=Fork head/winged helix factors;sequence=CTAAAAAA
+
+``` r
+HOXC9 <- promoter.seqs$`3225`
+HOXC9sitesets <- searchSeq(pwm, HOXC9, seqname="HOXC9", min.score="80%", strand="+")
+head(writeGFF3(HOXC9sitesets))
+```
+
+    ##                 seqname source feature start  end    score strand frame
+    ## MA0030.1.3225.1    3225   TFBS    TFBS  1184 1197 9.936481      +     .
+    ## MA0030.1.3225.2    3225   TFBS    TFBS  1476 1489 6.720608      +     .
+    ## MA0030.1.3225.3    3225   TFBS    TFBS  1944 1957 8.145674      +     .
+    ## MA0031.1.3225.1    3225   TFBS    TFBS   938  945 5.991351      +     .
+    ## MA0031.1.3225.2    3225   TFBS    TFBS   959  966 7.934533      +     .
+    ## MA0031.1.3225.3    3225   TFBS    TFBS  1712 1719 5.803724      +     .
+    ##                                                                            attributes
+    ## MA0030.1.3225.1 TF=FOXF2;class=Fork head/winged helix factors;sequence=GAAAGATAAATAGA
+    ## MA0030.1.3225.2 TF=FOXF2;class=Fork head/winged helix factors;sequence=CATACATACACACT
+    ## MA0030.1.3225.3 TF=FOXF2;class=Fork head/winged helix factors;sequence=TTTGGGTAAATACG
+    ## MA0031.1.3225.1       TF=FOXD1;class=Fork head/winged helix factors;sequence=ATAAAAAT
+    ## MA0031.1.3225.2       TF=FOXD1;class=Fork head/winged helix factors;sequence=GTAAAAAC
+    ## MA0031.1.3225.3       TF=FOXD1;class=Fork head/winged helix factors;sequence=TTAAAAAA
+
+``` r
+HOXC6 <- promoter.seqs$`3223`
+HOXC6sitesets <- searchSeq(pwm, HOXC6, seqname="HOXC6", min.score="80%", strand="+")
+head(writeGFF3(HOXC6sitesets))
+```
+
+    ##                 seqname source feature start  end     score strand frame
+    ## MA0030.1.3223      3223   TFBS    TFBS  1831 1844  9.033045      +     .
+    ## MA0030.1.3223.1    3223   TFBS    TFBS  1095 1108 13.688403      +     .
+    ## MA0030.1.3223.2    3223   TFBS    TFBS  2063 2076  7.858104      +     .
+    ## MA0031.1.3223.1    3223   TFBS    TFBS  1181 1188  8.475101      +     .
+    ## MA0031.1.3223.2    3223   TFBS    TFBS  1497 1504  5.803724      +     .
+    ## MA0031.1.3223.3    3223   TFBS    TFBS  1836 1843 13.755485      +     .
+    ##                                                                            attributes
+    ## MA0030.1.3223   TF=FOXF2;class=Fork head/winged helix factors;sequence=ATTGGGTAAACATG
+    ## MA0030.1.3223.1 TF=FOXF2;class=Fork head/winged helix factors;sequence=CCAACATAAACAGG
+    ## MA0030.1.3223.2 TF=FOXF2;class=Fork head/winged helix factors;sequence=CAGAAATAAATATT
+    ## MA0031.1.3223.1       TF=FOXD1;class=Fork head/winged helix factors;sequence=GTAAAAAG
+    ## MA0031.1.3223.2       TF=FOXD1;class=Fork head/winged helix factors;sequence=CTAAAAAA
+    ## MA0031.1.3223.3       TF=FOXD1;class=Fork head/winged helix factors;sequence=GTAAACAT
+
+``` r
+HEYL <- promoter.seqs$`26508`
+HEYLsitesets <- searchSeq(pwm, HEYL, seqname="HEYL", min.score="80%", strand="+")
+head(writeGFF3(HEYLsitesets))
+```
+
+    ##                  seqname source feature start end    score strand frame
+    ## MA0030.1.26508     26508   TFBS    TFBS   896 909 7.889733      +     .
+    ## MA0031.1.26508.1   26508   TFBS    TFBS   245 252 5.991351      +     .
+    ## MA0031.1.26508.2   26508   TFBS    TFBS   253 260 5.991351      +     .
+    ## MA0031.1.26508.3   26508   TFBS    TFBS   593 600 5.803724      +     .
+    ## MA0031.1.26508.4   26508   TFBS    TFBS   725 732 5.991351      +     .
+    ## MA0031.1.26508.5   26508   TFBS    TFBS   885 892 5.803724      +     .
+    ##                                                                             attributes
+    ## MA0030.1.26508   TF=FOXF2;class=Fork head/winged helix factors;sequence=CCAAAACAAACAAA
+    ## MA0031.1.26508.1       TF=FOXD1;class=Fork head/winged helix factors;sequence=ATAACCAT
+    ## MA0031.1.26508.2       TF=FOXD1;class=Fork head/winged helix factors;sequence=ATAAATAT
+    ## MA0031.1.26508.3       TF=FOXD1;class=Fork head/winged helix factors;sequence=TTAAAAAA
+    ## MA0031.1.26508.4       TF=FOXD1;class=Fork head/winged helix factors;sequence=CTAAAAAT
+    ## MA0031.1.26508.5       TF=FOXD1;class=Fork head/winged helix factors;sequence=CTAAAAAA
+
+``` r
+ZNF566 <- promoter.seqs$`80032`
+ZNF566sitesets <- searchSeq(pwm, ZNF566, seqname="ZNF566", min.score="80%", strand="+")
+head(writeGFF3(ZNF566sitesets))
+```
+
+    ##                  seqname source feature start end    score strand frame
+    ## MA0030.1.80032     80032   TFBS    TFBS   828 841 6.323706      +     .
+    ## MA0030.1.800321    80032   TFBS    TFBS   828 841 6.323706      +     .
+    ## MA0031.1.80032.1   80032   TFBS    TFBS    38  45 8.475101      +     .
+    ## MA0031.1.80032.2   80032   TFBS    TFBS    60  67 5.722194      +     .
+    ## MA0031.1.80032.3   80032   TFBS    TFBS   107 114 5.991351      +     .
+    ## MA0031.1.80032.4   80032   TFBS    TFBS   257 264 5.722194      +     .
+    ##                                                                             attributes
+    ## MA0030.1.80032   TF=FOXF2;class=Fork head/winged helix factors;sequence=CATAGGTACACAGA
+    ## MA0030.1.800321  TF=FOXF2;class=Fork head/winged helix factors;sequence=CATAGGTACACAGA
+    ## MA0031.1.80032.1       TF=FOXD1;class=Fork head/winged helix factors;sequence=GTAAGCAG
+    ## MA0031.1.80032.2       TF=FOXD1;class=Fork head/winged helix factors;sequence=GTAAGAAA
+    ## MA0031.1.80032.3       TF=FOXD1;class=Fork head/winged helix factors;sequence=TTAAAAAT
+    ## MA0031.1.80032.4       TF=FOXD1;class=Fork head/winged helix factors;sequence=GTAAGAAA
 
 ## Things to do
 
