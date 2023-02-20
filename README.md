@@ -1,7 +1,7 @@
 README
 ================
 Yutian Liu
-2023-02-19
+2023-02-20
 
 # Research on the correlation between functional human genes and epigenetic conservation
 
@@ -42,6 +42,7 @@ library(devtools)
 library(Matrix)
 library(ggridges)
 library(data.table)
+library(plotly)
 ```
 
 # Normal Colon data
@@ -284,7 +285,18 @@ Plots](https://yutianl.shinyapps.io/DNAMethylationScatterPl/) You can
 chose from the right legend and click the button twice to isolate them
 for a better visualization. Choose the `Log2_CPM` as the Y variable and
 `NN3_genePWD` as the X variable to view the association between gene
-expression and pair distance.
+expression and pair distance. 44 TFs in the paper are found in the colon
+cancer data. Gene “RTEL1,” “PPP2R2C,” “WNT2,” “FAM150A,” “KRT23,” and
+“FOXQ1” are not in the `Normal Colon` datasheet.
+
+``` r
+NN1<- readRDS("~/Desktop/DNA_Conservation/ScatterPl/census-app/data/NN1TFs220.rds")
+plot_ly(data = NN1, x = ~NN3_genePWD, y = ~Log2_CPM,color = ~common.essential.DepMap,type = "scatter",
+        mode   = 'markers') %>% 
+        layout(title = "Normal Colon, see interactive plot at the website")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
 
 ## 2.18 Update: Plot and Interactive Plots of ColonCancer data
 
@@ -299,7 +311,20 @@ as you like. There are three categories, `DepMap` means those genes are
 identified as more essential to proliferation in tissue culture in the
 recent DepMap CRISPR-Cas9 single gene disruptions. `Not DepMap` means
 those are not identified as essential DepMap genes. `PaperTFs` means
-those listed as TFs in colon cancer publications.
+those listed as TFs in colon cancer publications. 50 TFs in the paper
+are found in the `Colon Cancer` data.
+
+``` r
+coloncanShiny  <- readRDS("~/Desktop/DNA_Conservation/ColonCancer/ColonCancer/data/coloncanShiny3digits220.rds")
+plot_ly(data = coloncanShiny, x = ~ColumnTinExcel, y = ~log2,color = ~DepMap,type = "scatter",
+        mode   = 'markers') %>% 
+        layout(title = "Colon Cancer, see interactive plot at the website")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
+
+These two figures show that TFs in the paper expressed more in colon
+cancer than in the normal colon.
 
 ### With all data in the sheet
 
@@ -312,7 +337,7 @@ ggplot(coloncan, aes(x = ColumnTinExcel, y = log2)) +
   theme_light() + stat_cor(method = "pearson", label.x = 0.10, label.y = 15)+ylim(-10,30) + ggtitle("ALL Colon Cancer, r =",round(cor(x,y),2))
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
 
 As the plot shows, the Pearson correlation coefficient(r) is -0.55, and
 the P value is less than 2.2e-16, indicating a significant result that
@@ -345,7 +370,7 @@ ggplot(coloncanDep, aes(x = ColumnTinExcel, y = log2)) +
   theme_light() + stat_cor(method = "pearson", label.x = 0.05, label.y = 15)+ylim(-10,30) + ggtitle("Colon Cancer DepMap, r =",round(cor(x,y),2))
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-28-1.png)<!-- --> The plot
+![](README_files/figure-gfm/unnamed-chunk-30-1.png)<!-- --> The plot
 shows that the Pearson correlation coefficient(r) is -0.033. The P value
 is less than 0.05, indicating a significant result that there is a
 negative correlation between log2 and Column T in the DepMAP genes. This
@@ -379,7 +404,7 @@ ggplot(coloncanNoDep, aes(x = ColumnTinExcel, y = log2)) +
   theme_light() + stat_cor(method = "pearson", label.x = 0.05, label.y = 20)+ylim(-10,25) + ggtitle("Colon Cancer NotDepMap, r =",round(cor(x,y),2))
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-31-1.png)<!-- --> This figure
+![](README_files/figure-gfm/unnamed-chunk-33-1.png)<!-- --> This figure
 is similar to the figure drawn with all of these colon cancer data,
 there is a significant negative correlation between log2 and Column T,
 and the r value is -0.54.

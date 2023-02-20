@@ -43,6 +43,7 @@ library(devtools)
 library(Matrix)
 library(ggridges)
 library(data.table)
+library(plotly)
 ```
 
 # Normal Colon data
@@ -243,7 +244,14 @@ PWDs in DepMap essential genes are concentrated in the range from 0.06 to 0.08 a
 ## 1.20 Update Interactive Plots about TFs in paper
 
 In the paper "Transcription factor expression as a predictor of colon cancer prognosis: a machine learning practice"They identified five transcription factors for the predictive model, and they are HOXC9, ZNF556, HEYL, HOXC4 and HOXC6. Those five TFs(transcription factors) are not in the common essential genes list. And in the paper "DNA methylation events in transcription factors and gene expression changes in colon cancer", they selected 44 m-genes (methylation associated genes) which showed a partial correlation adjusting by stromal content. Those interactive plots are saved in this link. [Interactive Plots](https://yutianl.shinyapps.io/DNAMethylationScatterPl/) You can chose from the right legend and click the button twice to isolate them for a better visualization. Choose the `Log2_CPM` as the Y variable and `NN3_genePWD` as the X variable to view the association between gene expression and pair distance.
+44 TFs in the paper are found in the colon cancer data. Gene "RTEL1,"   "PPP2R2C," "WNT2,"   "FAM150A," "KRT23," and "FOXQ1"  are not in the `Normal Colon` datasheet.
 
+```{r,echo=TRUE}
+NN1<- readRDS("~/Desktop/DNA_Conservation/ScatterPl/census-app/data/NN1TFs220.rds")
+plot_ly(data = NN1, x = ~NN3_genePWD, y = ~Log2_CPM,color = ~common.essential.DepMap,type = "scatter",
+        mode   = 'markers') %>% 
+        layout(title = "Normal Colon, see interactive plot at the website")
+```
 
 
 ## 2.18 Update: Plot and Interactive Plots of ColonCancer data 
@@ -254,7 +262,16 @@ These plots are drawn using the ColonCancer data.
 
 See it at the [website](https://yutianl.shinyapps.io/ColonCancer/) 
 
-On this website, the y-axis is `log2`, and you can choose the x variable as you like. There are three categories, `DepMap` means those genes are identified as more essential to proliferation in tissue culture in the recent DepMap CRISPR-Cas9 single gene disruptions. `Not DepMap` means those are not identified as essential DepMap genes. `PaperTFs` means those listed as TFs in colon cancer publications.
+On this website, the y-axis is `log2`, and you can choose the x variable as you like. There are three categories, `DepMap` means those genes are identified as more essential to proliferation in tissue culture in the recent DepMap CRISPR-Cas9 single gene disruptions. `Not DepMap` means those are not identified as essential DepMap genes. `PaperTFs` means those listed as TFs in colon cancer publications. 50 TFs in the paper are found in the `Colon Cancer` data.
+
+```{r,echo=TRUE}
+coloncanShiny  <- readRDS("~/Desktop/DNA_Conservation/ColonCancer/ColonCancer/data/coloncanShiny3digits220.rds")
+plot_ly(data = coloncanShiny, x = ~ColumnTinExcel, y = ~log2,color = ~DepMap,type = "scatter",
+        mode   = 'markers') %>% 
+        layout(title = "Colon Cancer, see interactive plot at the website")
+```
+
+These two figures show that TFs in the paper expressed more in colon cancer than in the normal colon. 
 
 
 ```{r,include=FALSE}
